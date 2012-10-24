@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Unit 2 HW</title>
+	</head>
+	<body>
+		<h2> Signup </h2>
+		<form method="post">
+			Username:
+			<input name="username" type="text" value="{{username}}">
+			<span style="color: red">{{username_error}}</span>
+			<br>
+			Password:
+			<input name="password" type="password" value="">
+			<span style="color: red">{{password_error}}</span>
+			<br>
+			Verify Password:
+			<input name="verify" type="password" value="">
+			<span style="color: red">{{verify_error}}</span>
+			<br>
+			E-mail [optional]:
+			<input name="email" type="text" value="{{email}}">
+			<span style="color: red">{{email_error}}</span>
+			<br>
+			<input type="submit">
+		</form>
+	</body>
+</html>

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Unit 3 Blog</title>
+  </head>
+  <style type="text/css">
+    body {
+      font-family: sans-serif;
+      width: 800px;
+      margin: 0 auto;
+      padding: 10px;
+    }
+    hr {
+      margin: 20px auto;
+    }
+    .entry + .entry {
+      margin-top: 20px;
+    }
+    .title {
+      font-weight: bold;
+      font-size: 20px;
+    }
+    .content {
+      margin: 0;
+      font-size: 17px;
+    }
+  </style>
+  <body>
+    <h1>CS 253 Blog</h1>
+    <hr>
+    {% for entry in entries %}
+      <div class="entry">
+        <div class="title">{{entry.title}}</div>
+        <pre class="content">{{entry.content}}</pre>
+      </div>
+    {% endfor %}
+    
+  </body>
+
+</html>

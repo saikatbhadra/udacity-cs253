@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link type="text/css" rel="stylesheet" href="/static/main.css" />
+    <title>Unit 3 Blog</title>
+  </head>
+  <body>
+    <a href="/blog" class="main-title">CS 253 Blog</a>
+    <div class="entry-heading">
+      <a href={{"/blog/%s"%entry.key().id()}} class="subject">{{entry.subject}}</a>
+      <div class="entry-date">{{entry.date_created.strftime('%B %d, %Y')}}</div>
+    </div>
+    <div class="content">{{entry.content}}</div>
+      <br>
+  </body>
+
+</html>
