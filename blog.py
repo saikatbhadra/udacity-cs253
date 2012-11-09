@@ -18,10 +18,10 @@ jinja_env = jinja2.Environment(autoescape = True,
 def rot13(text):
 	out = ''
 	offset = 13
-	aval = ord('a')	
+	aval = ord('a')
 	Aval = ord('A')
 	alp_range = ord('z') - ord('a') + 1
- 
+
 	for char in text:
 		char_num = ord(char)
 		if (char_num >= ord('a')) and (char_num <= ord('z')):
@@ -109,9 +109,9 @@ class Signup(BlogHandler):
 		email_re = re.compile(r"^[\S]+@[\S]+\.[\S]+$")
 
 		# pull data from form
-		username = self.request.get('username') 
-		password = self.request.get('password') 
-		verify = self.request.get('verify') 
+		username = self.request.get('username')
+		password = self.request.get('password')
+		verify = self.request.get('verify')
 		email = self.request.get('email')
 
 		has_error = False
@@ -122,7 +122,7 @@ class Signup(BlogHandler):
 		# perform validation checks
 		if username_re.search(username) is None:
 			has_error = True
-			fields['username_error'] = "That's not a valid username" 
+			fields['username_error'] = "That's not a valid username"
 		if password_re.match(password) is None:
 			has_error = True
 			fields['password_error'] = "That wasn't a valid password"
@@ -156,8 +156,8 @@ class Login(BlogHandler):
 
 	def post(self):
 		# pull data from form
-		username = self.request.get('username') 
-		password = self.request.get('password') 
+		username = self.request.get('username')
+		password = self.request.get('password')
 		u = User.login(username,password)
 
 		if u:
@@ -201,10 +201,16 @@ class Submit(BlogHandler):
 			error = "You need both a subject and content to be filled out"
 			self.render('submit.html',subject=subject,content=content, error= error)
 
-class FrontPage(BlogHandler):#
+class FrontPageJSON(BlogHandler):
 	def get(self):
 		entries =  db.GqlQuery("SELECT * FROM Entry ORDER BY date_created DESC LIMIT 10")
 		self.render("frontpage.html",entries=entries)
+
+class FrontPage(BlogHandler):
+	def get(self):
+		entries =  db.GqlQuery("SELECT * FROM Entry ORDER BY date_created DESC LIMIT 10")
+		self.render("frontpage.html",entries=entries)
+
 
 class Permalink(BlogHandler):
 	def get(self, blog_id):
@@ -260,5 +266,6 @@ app = webapp2.WSGIApplication([('/unit2/rot13/?',Rot13),
 							   ('/blog/([0-9]+)',Permalink),
 							   ('/blog/login/?',Login),
 							   ('/blog/logout/?',Logout),
-							   ('/blog/?',FrontPage)],
+							   ('/blog/?',FrontPage),
+							   ('/blog/?.json',FrontPageJSON)],
 							   debug=True)
