@@ -13,6 +13,7 @@ import blogcrypt
 import json
 from google.appengine.api import memcache
 import logging
+import time
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(autoescape = True,
@@ -208,30 +209,74 @@ class Submit(BlogHandler):
 		if subject and content:
 			blog_post = Entry(subject=subject, content=content)
 			blog_post.put() #stores the blog post
+			front_entries(True); #update the cache when we add a post
 			blog_id = blog_post.key().id()
 			self.redirect('/blog/%s' % blog_id)
 		else:
 			error = "You need both a subject and content to be filled out"
 			self.render('submit.html',subject=subject,content=content, error= error)
 
+def front_entries(update = False):
+	key = "frontpage"
+	front_hash = memcache.get(key)
+
+	if front_hash is None or update:
+		logging.info("DB QUERY for FrontPage")
+		entries = db.GqlQuery("SELECT * FROM Entry ORDER BY date_created DESC LIMIT 10")
+		front_hash = {}
+		front_hash['entries'] = list(entries)
+		front_hash['time'] = time.time()
+		memcache.set(key,front_hash)
+	else:
+		query_time = front_hash.get("time")
+		if query_time is None:
+			front_hash['time'] = time.time()
+			memcache.set(key,front_hash)
+	return front_hash
+
 class FrontPage(BlogHandler):
 	def get(self):
-		entries =  db.GqlQuery("SELECT * FROM Entry ORDER BY date_created DESC LIMIT 10")
+		out = front_entries()
+		entries = out['entries']
+		query_time = out['time']
+		time_elapsed = time.time() - query_time
 		if self.format == 'html':
-			self.render("frontpage.html",entries=entries)
+			self.render("frontpage.html",entries=entries,time_elapsed=time_elapsed)
 		elif self.format == 'json':
 			front_list = []
 			for entry in entries:
 				front_list.append(entry.as_dict())
 			self.render_json(front_list)
 
-class Permalink(BlogHandler):
-	def get(self, blog_id):
+
+def permalink_cache(blog_id,update = False):
+	mem_key = "permalink#%s" %(blog_id)
+	entry_hash = memcache.get(mem_key)
+	if entry_hash is None or update:
+		logging.info("DB QUERY for Permalink# 	%s" %(blog_id))
 		key = db.Key.from_path('Entry',int(blog_id))
 		entry = db.get(key)
-		if entry:
+		if entry is None:
+			return None
+		entry_hash = {}
+		entry_hash['entry'] = entry
+		entry_hash['time'] = time.time()
+		memcache.set(mem_key,entry_hash)
+	else:
+		query_time = entry_hash.get("time")
+		if query_time is None:
+			entry_hash['time'] = time.time()
+			memcache.set(mem_key,entry_hash)
+	return entry_hash
+
+class Permalink(BlogHandler):
+	def get(self, blog_id):
+		entry_hash = permalink_cache(int(blog_id))
+		if entry_hash:
+			entry = entry_hash['entry']
+			time_elapsed = time.time() - entry_hash['time']
 			if self.format == 'html':
-				self.render("permalink.html",entry=entry)
+				self.render("permalink.html",entry=entry,time_elapsed=time_elapsed)
 			elif self.format == 'json':
 				self.render_json(entry.as_dict())
 		else:
