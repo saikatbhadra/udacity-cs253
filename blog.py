@@ -11,6 +11,8 @@ import datetime
 from google.appengine.ext import db
 import blogcrypt
 import json
+from google.appengine.api import memcache
+import logging
 
 template_dir = os.path.join(os.path.dirname(__file__), 'templates')
 jinja_env = jinja2.Environment(autoescape = True,
@@ -79,6 +81,11 @@ class BlogHandler(webapp2.RequestHandler):
 	def render(self,template,**kw):
 		self.write(self.render_str(template,**kw))
 
+	def render_json(self,data):
+		json_txt = json.dumps(data)
+		self.response.headers["Content-Type"] = "application/json; charset=UTF-8"
+		self.write(json_txt)
+
 	def set_secure_cookie(self,name,val):
 		secure_cookie = blogcrypt.make_cookie_hash(str(val))
 		self.response.set_cookie(name, secure_cookie)
@@ -98,6 +105,11 @@ class BlogHandler(webapp2.RequestHandler):
 		webapp2.RequestHandler.initialize(self,*a,**kw)
 		uid = self.read_secure_cookie('user_id')
 		self.user = uid and User.by_id(int(uid))
+
+		if self.request.url.endswith('.json'):
+			self.format = 'json'
+		else:
+			self.format = 'html'
 
 class Signup(BlogHandler):
 	def get(self):
@@ -202,51 +214,26 @@ class Submit(BlogHandler):
 			error = "You need both a subject and content to be filled out"
 			self.render('submit.html',subject=subject,content=content, error= error)
 
-class FrontPageJSON(BlogHandler):
-	def get(self):
-		self.response.headers["Content-Type"] = "application/json; charset=UTF-8"
-		entries =  db.GqlQuery("SELECT * FROM Entry ORDER BY date_created DESC LIMIT 10")
-		front_list = []
-		for entry in entries:
-			article = {}
-			article["content"] = entry.content
-			article["subject"] = entry.subject
-			article["created"] = entry.date_created.strftime('%a %b %d %H:%M:%S %Y')
-			article["last_modified"] = entry.last_modified.strftime('%a %b %d %H:%M:%S %Y')
-			front_list.append(article)
-		front_list = json.dumps(front_list)
-		self.write(front_list)
-
-
 class FrontPage(BlogHandler):
 	def get(self):
 		entries =  db.GqlQuery("SELECT * FROM Entry ORDER BY date_created DESC LIMIT 10")
-		self.render("frontpage.html",entries=entries)
-
+		if self.format == 'html':
+			self.render("frontpage.html",entries=entries)
+		elif self.format == 'json':
+			front_list = []
+			for entry in entries:
+				front_list.append(entry.as_dict())
+			self.render_json(front_list)
 
 class Permalink(BlogHandler):
 	def get(self, blog_id):
 		key = db.Key.from_path('Entry',int(blog_id))
 		entry = db.get(key)
 		if entry:
-			self.render("permalink.html",entry=entry)
-		else:
-			self.error(404)
-			return
-
-class PermalinkJSON(BlogHandler):
-	def get(self, pagetxt):
-		self.response.headers["Content-Type"] = "application/json; charset=UTF-8"
-		blog_id = pagetxt[:pagetxt.find('.json')]
-		key = db.Key.from_path('Entry',int(blog_id))
-		entry = db.get(key)
-		if entry:
-			article = {}
-			article["content"] = entry.content
-			article["subject"] = entry.subject
-			article["created"] = entry.date_created.strftime('%a %b %d %H:%M:%S %Y')
-			article["last_modified"] = entry.last_modified.strftime('%a %b %d %H:%M:%S %Y')
-			self.write(json.dumps(article))
+			if self.format == 'html':
+				self.render("permalink.html",entry=entry)
+			elif self.format == 'json':
+				self.render_json(entry.as_dict())
 		else:
 			self.error(404)
 			return
@@ -288,14 +275,21 @@ class Entry(db.Model):
 		self._render_text = self.content.replace('\n','<br>')
 		return render_str("entry.html", entry = self)
 
+	def as_dict(self):
+		d = {
+		'subject': self.subject,
+		'content': self.content,
+		'created': self.date_created.strftime('%a %b %d %H:%M:%S %Y'),
+		'last_modified': self.last_modified.strftime('%a %b %d %H:%M:%S %Y')
+		}
+		return d
+
 app = webapp2.WSGIApplication([('/unit2/rot13/?',Rot13),
 							   ('/blog/signup/?',Signup),
 							   ('/blog/welcome/?',Welcome),
 							   ('/blog/newpost/?',Submit),
-							   ('/blog/([0-9]+)',Permalink),
-							   ('/blog/([0-9]+.json)',PermalinkJSON),
+							   ('/blog/([0-9]+)(?:\.json)?',Permalink),
 							   ('/blog/login/?',Login),
 							   ('/blog/logout/?',Logout),
-							   ('/blog/?',FrontPage),
-							   ('/blog/?.json',FrontPageJSON)],
+							   ('/blog/?(?:\.json)?',FrontPage)],
 							   debug=True)
