@@ -216,6 +216,11 @@ class Submit(BlogHandler):
 			error = "You need both a subject and content to be filled out"
 			self.render('submit.html',subject=subject,content=content, error= error)
 
+class Flush(BlogHandler):
+	def get(self):
+		memcache.flush_all()
+		self.redirect('/blog/')
+
 def front_entries(update = False):
 	key = "frontpage"
 	front_hash = memcache.get(key)
@@ -331,6 +336,7 @@ class Entry(db.Model):
 
 app = webapp2.WSGIApplication([('/unit2/rot13/?',Rot13),
 							   ('/blog/signup/?',Signup),
+   							   ('/blog/flush/?',Flush),
 							   ('/blog/welcome/?',Welcome),
 							   ('/blog/newpost/?',Submit),
 							   ('/blog/([0-9]+)(?:\.json)?',Permalink),
