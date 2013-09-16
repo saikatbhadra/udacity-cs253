@@ -60,6 +60,18 @@ class Rot13(BaseHandler):
 # BLOG STUFF HERE ------------------------------------------------------------
 # ############################################################################
 
+def age_set(key,val):
+	save_time= datetime.utcnow()
+	memcache.set(key,(val,save_time))
+
+def age_get(key):
+	r = memcache.get(key)
+	if r:
+		val, save_time = r
+		age = (datetime.utcnow() - save_time).total_seconds
+	else:
+		val, age = None,0
+	return val,age
 
 def render_str(template, **params):
 	t = jinja_env.get_template(template)
